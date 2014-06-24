@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+{% load static %}
+{% block extrahead %}
+{% endblock %}
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="">
+    <meta name="author" content="">
+    <script src="{% static 'js/jquery.js' %}"></script>
+    <link rel="shortcut icon" href="{% static 'img/favicon.png' %}">
+    {% block title %}
+        <title>On-line HRV Analysis</title>
+    {% endblock title %}
+    <!-- Bootstrap core CSS -->
+    <link href="{% static 'css/bootstrap.css' %}" rel="stylesheet">
+    <!-- Custom styles for this template -->
+    <link href="{% static 'css/offcanvas.css' %}" rel="stylesheet">
+</head>
+<body>
+  <script type='text/javascript' src='http://code.jquery.com/jquery-1.8.2.js'></script>
+  <script type="text/javascript">
+    $(document).ready(function() {
+        $('#get_wf').click(function(e) {
+            e.preventDefault();
+            var gkey = $("#key").val();
+            $.ajax({
+                type:"POST",
+                url:"/process_key/",
+                dataType: "json",
+                async:false, 
+                data:{key:gkey, csrfmiddlewaretoken: '{{ csrf_token }}'},
+                success: function(json){
+                    var pipelines = json[0].pipelines;
+                    var users = json[1].users;
+                    var sub_proc = json[2].sub_proc;
+                    $('#wlist').empty();
+                    $('#ulist').empty();
+                    $('#ptable').empty();
+                    $('#hidkey').empty();
+                    $('#messages').empty();
+                    console.log(pipelines);
+                    if (  Object.prototype.toString.call(pipelines) == '[object String]'){
+                        $('#messages').append('<div class="alert alert-danger"> <button type="button" class="close" data-dismiss="alert">&times;</button><p class=danger > Your Key seems to be wrong, please check for errors </p> </div>');
+                    }
+                    else {
+                        $('#messages').append('<div class="alert alert-success"> <button type="button" class="close" data-dismiss="alert">&times;</button><p class=success > Data Retrieved correctly </p> </div>');
+                        $("#step2").show();
+                        for( var i = 0; i < pipelines.length; i++){
+                            $('#wlist').append('<input type="checkbox" name="pipe" id='+pipelines[i][0]+' value="'+pipelines[i][1]+'" >'+pipelines[i][1]+' <br>');
+                         }   
+                    }
+                    for ( var i = 0; i < users.length; i++){
+                        $('#ulist').append('<input type="checkbox" name="user" id='+users[i][0]+' value='+users[i][1]+' >'+users[i][1]+'<br>');
+                    }
+                    $('#hidkey').append('<input type="hidden" name="key" value="'+gkey+'">')
+                    if ( jQuery.isEmptyObject(sub_proc) ) {
+                        $('#ptable').append('<div id="empty_ptable">You have no process submitted yet<div>');
+                    }
+                    for ( var i=0; i < sub_proc.length; i++){
+                        if (sub_proc[i].status == "true")  {
+                            $('#ptable').append('<tr><td>'+sub_proc[i].submitted+'</td><td>'+sub_proc[i].pipeline+' / '+sub_proc[i].user+'</td><td><form method="POST" name="proc_list_info"><input id="startj" key='+gkey+' pid='+sub_proc[i].id+' class="btn btn-go" value="Start"><input id="stopj" pid='+sub_proc[i].id+' class="btn btn-danger" key='+sub_proc[i].key+' style="display:none" value="Stop"></form></td></tr>');
+                            }
+                        else {
+                            $('#ptable').append('<tr><td>'+sub_proc[i].submitted+'</td><td>'+sub_proc[i].pipeline+' / '+sub_proc[i].user+'</td><td><form method="POST" name="proc_list_info"><input id="startj" pid='+sub_proc[i].id+' class="btn btn-go" key='+gkey+'  value="Start"><input id="stopj" pid='+sub_proc[i].id+' class="btn btn-danger" style="display:none" value="Stop"></form></td></tr>');
+                            }
+                    }
+
+                    },
+                error: function(xhr,textStatus,err){
+                        $('#messages').append('<div class="alert alert-danger"> <button type="button" class="close" data-dismiss="alert">&times;</button><p class=danger > Error in retrieving data with your Key </p> </div>');              
+                    },
+                timeout: 10000
+                });
+        });
+        $('#subj').click(function(e) {
+            e.preventDefault();
+            var pipes = $('input[name=pipe]:checked').map(function()
+            {
+                var res = {
+                  "id": $(this).attr("id"),
+                  "name": $(this).val()
+                }
+                return res;
+            }).get();
+            var users = $('input[name=user]:checked').map(function()
+            {
+                var res = {
+                  "id": $(this).attr("id"),
+                  "name": $(this).val()
+                }
+                return res;
+            }).get();
+            $('input[type=checkbox]').attr("checked", false);
+            var gkey = $("#key").val();
+            $.ajax({
+                type:"POST",
+                url:"/submit_jobs/",
+                dataType:"json",
+                async:"false",
+                data: { csrfmiddlewaretoken: '{{ csrf_token }}', pipeline_list:JSON.stringify(pipes) , user_list:JSON.stringify(users), key:gkey },
+                success: function(json){
+                    var warn = "False";
+                    var error = "False";
+                    $('#messages').empty();
+                    for (i=0; i<json.length; i++){
+                        if (json[i].status == true) {
+                            $('#empty_ptable').remove();
+                            $('#ptable').append('<tr><td>'+json[i].submitted+'</td><td>'+json[i].pipeline+' / '+json[i].user+'</td><td><form method="POST" name="proc_list_info"><input pid='+json[i].process_id+' key='+gkey+' id="startj" class="btn btn-go" value="Start"><input pid='+json[i].process_id+' key='+gkey+' id="stopj" class="btn btn-danger" style="display:none" value="Stop"></form></td></tr>');   
+                            if (json[i].warn == true) {                              
+                                $('#messages').append('<div class="alert alert-warning"> <button type="button" class="close" data-dismiss="alert">&times;</button><p class=alert >Pipeline '+json[i].pipeline+' on User '+json[i].user+' already existent: a copy will be added </p> </div>');                                
+                                }
+                             }   
+                        else {
+                            error = "true";
+                            $('#messages').append('<div class="alert alert-danger"> <button type="button" class="close" data-dismiss="alert">&times;</button><p class=danger > Unable to submit Pipeline '+json[i].pipeline+' on User '+json[i].user+'</p> </div>');
+                        }
+                    }    
+                    if (error=="False") {
+                        $('#messages').append('<div class="alert alert-success"> <button type="button" class="close" data-dismiss="alert">&times;</button><p class=success > All jobs submitted correctly </p> </div>');
+                    }
+                },
+                error: function(xhr,textStatus,err){
+                        $('#messages').empty();
+                        $('#messages').append('<div class="alert alert-danger"> <button type="button" class="close" data-dismiss="alert">&times;</button><p class=danger > 500: internal error </p> </div>');        
+                },
+                timeout: 10000
+            });
+        });
+        $('#startj').live("click", function(e) {
+            e.preventDefault();
+            var gkey = $(this).attr('key');
+            var pid = $(this).attr('pid');
+            $.ajax({
+                type:"POST",
+                url:"/start_job/",
+                dataType: "json",
+                async:false,
+                data:{'key':gkey, 'job_id':pid , csrfmiddlewaretoken: '{{ csrf_token }}'},
+                success: function(json){
+                    if (json.status = "success") {
+                        //$('input[pid='+pid+'][id=stopj]').show();
+                        //$('input[pid='+pid+'][ id=startj]').hide();
+                        $('#messages').empty();
+                        $('#messages').append('<div class="alert alert-success"> <button type="button" class="close" data-dismiss="alert">&times;</button><p class=success > Process started correctly </p> </div>');
+                    }
+                },
+                error:function(){
+                    $('#messages').empty();
+                    $('#messages').append('<div class="alert alert-danger"> <button type="button" class="close" data-dismiss="alert">&times;</button><p class=danger > Impossible to start the process </p> </div>');
+                },
+                timeout: 10000
+              });
+            }); 
+        $('#stopj').live("click", function(e) {
+            e.preventDefault();
+            var gkey = $(this).attr('key');
+            var pid = $(this).attr('pid');
+            $.ajax({
+                type:"POST",
+                url:"/stop_job/",
+                dataType: "json",
+                async:false,
+                data:{'key':gkey, 'job_id':pid , csrfmiddlewaretoken: '{{ csrf_token }}'},
+                success: function(json){
+                    if (json.status = "success") {
+                        $('input[pid='+pid+'][ id=startj]').show();
+                        $('input[pid='+pid+'][id=stopj]').hide();
+                        $('#messages').empty();
+                        $('#messages').append('<div class="alert alert-success"> <button type="button" class="close" data-dismiss="alert">&times;</button><p class=success > Process stopped correctly </p> </div>');
+                    }
+                },
+                error:function(){
+                    $('#messages').empty();
+                    $('#messages').append('<div class="alert alert-danger"> <button type="button" class="close" data-dismiss="alert">&times;</button><p class=danger > Error in stopping the process </p> </div>');
+                }
+              });
+            });         
+                                   
+   }); 
+   
+  </script>
+        <div class="jumbotron">
+                <h1> <strong>On-line HRV Analysis</strong></h1>
+                <h3>Web-application for Online Heart Rate Variability analysis on wearable sensor data streams Designed for Galaxy</h3>
+            
+            <!-- add description here -->
+           
+        </div>
+        <div id="messages" class="col-6"></div>    
+        <form name="key_form" method="post">
+        {% csrf_token %}
+        Insert your Key here:
+            <input type="text" value="" id="key" size="30">
+            <input type="submit" class="btn btn-go" value="Get Workflows" id="get_wf">
+        </form> 
+      <br>
+        <div id="step2" class="row row-offcanvas row-offcanvas-left" style="display:none">  
+            <div class="col-xs-12 col-md-8">
+            <form name="start_jobs" method="post">
+            {% csrf_token %}
+            <h3> Submit New Jobs </h3><br>
+            Here below you can select which pipeline to submit on which data stream. Remember that every pipeline selected will be launched on every data stream selected. <br><br>
+                <div class="col-xs-6 col-md-6" >
+                    <div class="panel panel-default">
+                        <div class="panel-heading">
+                            <h3 class="panel-title">Available Pipelines:</h3>
+                        </div>
+                        <div id="wlist"></div>
+                    </div>    
+                </div>    
+                <div class="col-xs-6 col-md-6" >    
+                    <div class="panel panel-default">
+                        <div class="panel-heading">
+                            <h3 class="panel-title">Available Users:</h3>
+                        </div>                        
+                        <div id="ulist"></div>
+                    </div>    
+                </div>
+                <div>
+                    <div id="hidkey"></div>
+                    <input type="submit" class="btn btn-go" value="Submit Jobs" id="subj">
+                </div>
+            </form>
+            </div> 
+        <div id="plist" class="col-xs-6 col-md-4" style="background:#F0F0F0">
+      <h3>Submitted Process</h3><br>
+      From this list you can restart a process you've already submitted, on updated data<br><br>
+        <div class="panel panel-default">
+          <div class="panel-heading">
+             <h3 class="panel-title">Process List</h3>
+          </div>   
+          <table id="ptable" class="table">
+        </table>
+        </div>
+        </div>
+      </div>  
+      {% block footer %}
+        <footer>
+          <br><br>
+          <div class="row">
+            <div class="col-md-6"><a href="http://www.fbk.eu" target="_blank"><img src="{% static 'img/logo-small.gif' %}"></a></div>
+            <div class="col-md-6"><p class="pull-right"> This WebPage was developed in the <a href="mpba.fbk.eu">MPBA Unit</a></p></div>
+          </div>  
+        </footer>
+      {% endblock footer %}
+      <script src="{% static 'js/bootstrap.js' %}"></script>
+    </body>
+</html>
+
