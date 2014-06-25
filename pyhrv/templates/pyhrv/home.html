@@ -18,14 +18,20 @@
     <link href="{% static 'css/bootstrap.css' %}" rel="stylesheet">
     <!-- Custom styles for this template -->
     <link href="{% static 'css/offcanvas.css' %}" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/ladda-themeless.min.css' %}">
+
 </head>
 <body>
+  <script src="{% static 'js/spin.min.js' %}"></script>
+  <script src="{% static 'js/ladda.min.js' %}"></script>
   <script type='text/javascript' src='http://code.jquery.com/jquery-1.8.2.js'></script>
   <script type="text/javascript">
     $(document).ready(function() {
-        $('#get_wf').click(function(e) {
-            e.preventDefault();
+        $('#get_wf_ladda').click(function(e) {
+            e.preventDefault();            
             var gkey = $("#key").val();
+            var l = Ladda.create(this);
+            l.start();
             $.ajax({
                 type:"POST",
                 url:"/process_key/",
@@ -33,6 +39,7 @@
                 async:false, 
                 data:{key:gkey, csrfmiddlewaretoken: '{{ csrf_token }}'},
                 success: function(json){
+                    l.stop();
                     var pipelines = json[0].pipelines;
                     var users = json[1].users;
                     var sub_proc = json[2].sub_proc;
@@ -41,7 +48,6 @@
                     $('#ptable').empty();
                     $('#hidkey').empty();
                     $('#messages').empty();
-                    console.log(pipelines);
                     if (  Object.prototype.toString.call(pipelines) == '[object String]'){
                         $('#messages').append('<div class="alert alert-danger"> <button type="button" class="close" data-dismiss="alert">&times;</button><p class=danger > Your Key seems to be wrong, please check for errors </p> </div>');
                     }
@@ -70,6 +76,7 @@
 
                     },
                 error: function(xhr,textStatus,err){
+                        l.stop();
                         $('#messages').append('<div class="alert alert-danger"> <button type="button" class="close" data-dismiss="alert">&times;</button><p class=danger > Error in retrieving data with your Key </p> </div>');              
                     },
                 timeout: 10000
@@ -194,7 +201,7 @@
         {% csrf_token %}
         Insert your Key here:
             <input type="text" value="" id="key" size="30">
-            <input type="submit" class="btn btn-go" value="Get Workflows" id="get_wf">
+            <a href="#" id="get_wf_ladda" class="btn btn-go ladda-button" data-style="zoom-in" data-size="l"><span class="ladda-label">Get Workflows</span></a>
         </form> 
       <br>
         <div id="step2" class="row row-offcanvas row-offcanvas-left" style="display:none">  
