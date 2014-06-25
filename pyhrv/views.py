@@ -29,17 +29,25 @@ def process_key(request):
     host = 'http://laske.fbk.eu:50001'
     print key
     try:
+        print "retrieving pipelines"
         pipelines = RetrieveOnLineWorkFlows(host,key)
     except Exception, e:
         print e
         pipelines = "Error retrieving the API key: check if it is correct"
     try:
+        print "connecting"
         conn = psycopg2.connect("dbname='hrv_realtime' user='geopgdbmgr' host='geopg' password='geo2K12pg!!'")
         cur=conn.cursor()
+        print "executing query"
         cur.execute("SELECT * from subjects")
         users = cur.fetchall()
-    except:
-        print "I am unable to connect to the User database"
+        print "closing"
+        conn.commit()
+        cur.close()
+        conn.close()
+        print "closed"
+    except Exception, e:
+        print e
     print users
     try:    
         sub_procs = SubmittedProcess.objects.filter(galaxy_key=key)
