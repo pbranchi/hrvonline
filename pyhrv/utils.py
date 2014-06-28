@@ -1,7 +1,7 @@
 from bioblend.galaxy import GalaxyInstance
 
 
-def RetrieveOnLineWorkFlows(host='http://laske.fbk.eu:50001',api_key='33416687e72abf376c4860b7ab18e1f5'):
+def RetrieveOnLineWorkFlows(host,api_key):
     gi = GalaxyInstance(host, key=api_key)
 
     wf = gi.workflows.get_workflows()
@@ -25,3 +25,15 @@ def RetrieveOnLineWorkFlows(host='http://laske.fbk.eu:50001',api_key='33416687e7
             online_ws.append((id_wf,id_name))
 
     return online_ws
+
+def ExecuteMonitoringDaemon(host,api_key, workflow_id, subject_name):
+
+
+    gi = GalaxyInstance(host, key=api_key)
+    curr_hist = gi.histories.get_current_history()
+    hist_id = curr_hist['id']
+    ds_output = gi.tools.run_tool(history_id=hist_id, tool_id='hrv_online_daemon', tool_inputs={'subject_name':subject_name, 'workflow_id':workflow_id})
+    print ds_output.values()[0][0]['id']
+
+
+    return True    
