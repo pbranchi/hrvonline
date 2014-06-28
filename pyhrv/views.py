@@ -75,6 +75,7 @@ def submit_jobs(request):
             try:        
                 p = Process(target=ExecuteMonitoringDaemon, args=(host,key, pipe['id'], usr['name'],))
                 p.start()
+                print p.pid
                 submitted = True  
             except Exception, e:
                 print e    
@@ -93,10 +94,11 @@ def submit_jobs(request):
 def start_process(request):
     job_id = request.POST.get('job_id', None)
     key = request.POST.get('key',None)
-    sub_proc = SubmittedProcess.objects.filter(process_id=job_id)
+    sub_proc = SubmittedProcess.objects.get(process_id=job_id)
     host = 'http://laske.fbk.eu:50001'
+    print sub_proc
     try:    
-        p = Process(target=ExecuteMonitoringDaemon, args=(host,key, pipe_id, sub_proc.user,))
+        p = Process(target=ExecuteMonitoringDaemon, args=(host,key, sub_proc.pipeline_id, sub_proc.user,))
         p.start()  
     except Exception, e:
         print e     
