@@ -27,7 +27,7 @@ def process_key(request):
     users = []
     sub_proc = []
     results = []
-    host = 'http://laske.fbk.eu:50001'
+    host = 'mpbagalaxy.fbk.eu'
     try:
         pipelines = RetrieveOnLineWorkFlows(host,key)
     except Exception, e:
@@ -61,7 +61,7 @@ def submit_jobs(request):
     pipe_list = json.loads(request.POST.get('pipeline_list', []))
     user_list = json.loads(request.POST.get('user_list', []))
     key = request.POST.get('key', None)
-    host = 'http://laske.fbk.eu:50001'
+    host = 'mpbagalaxy.fbk.eu'
     sub_jobs =[]
     warn = False
     key = request.POST.get('key',None)
@@ -95,7 +95,7 @@ def start_process(request):
     job_id = request.POST.get('job_id', None)
     key = request.POST.get('key',None)
     sub_proc = SubmittedProcess.objects.get(process_id=job_id)
-    host = 'http://laske.fbk.eu:50001'
+    host = 'mpbagalaxy.fbk.eu'
     print sub_proc
     try:    
         p = Process(target=ExecuteMonitoringDaemon, args=(host,key, sub_proc.pipeline_id, sub_proc.user,))
